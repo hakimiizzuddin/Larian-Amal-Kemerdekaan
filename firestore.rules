@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connectivity verification probe
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // Security Primitives
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email == 'hakimiizzuddin@gmail.com' && request.auth.token.email_verified == true)
+      );
+    }
+
+    // Validation helper for Registrations
+    function isValidRegistration(data) {
+      return data.keys().hasAll(['fullName', 'email', 'category', 'feePaid', 'bibNumber', 'status', 'createdAt']) &&
+             data.keys().hasOnly(['fullName', 'email', 'category', 'feePaid', 'bibNumber', 'status', 'createdAt', 'tshirtSize', 'emergencyContact', 'userId']) &&
+             data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 100 &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 120 &&
+             (data.category == '10km_veteran' || data.category == '10km_open' || data.category == '5km_fun') &&
+             data.feePaid is number && data.feePaid == 50 &&
+             data.bibNumber is string && data.bibNumber.size() <= 32 && data.bibNumber.matches('^LAM-[0-9]{3,6}$') &&
+             (data.status == 'confirmed' || data.status == 'cancelled') &&
+             (!('tshirtSize' in data) || (data.tshirtSize in ['XS', 'S', 'M', 'L', 'XL', '2XL'])) &&
+             (!('emergencyContact' in data) || (data.emergencyContact is string && data.emergencyContact.size() <= 60)) &&
+             (!('userId' in data) || (data.userId is string && data.userId.size() <= 128));
+    }
+
+    // Collection: Registrations
+    match /registrations/{registrationId} {
+      // Allow reading for public bib lookups, participant confirmation, and admin oversight
+      allow get: if isValidId(registrationId);
+      allow list: if true;
+
+      // Allow creating registrations
+      allow create: if isValidId(registrationId) &&
+                       isValidRegistration(incoming()) &&
+                       (
+                         !('userId' in incoming()) ||
+                         incoming().userId == 'guest' ||
+                         (isSignedIn() && incoming().userId == request.auth.uid)
+                       );
+
+      // Allow updates:
+      // Tier 1: Admin can update status and metadata
+      // Tier 2: Registrant can only modify tshirtSize or emergencyContact while keeping immortal fields intact
+      allow update: if isValidId(registrationId) &&
+                       isValidRegistration(incoming()) &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().bibNumber == existing().bibNumber &&
+                       incoming().feePaid == existing().feePaid &&
+                       (
+                         isAdmin() ||
+                         (
+                           isSignedIn() &&
+                           existing().userId == request.auth.uid &&
+                           incoming().userId == existing().userId &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['tshirtSize', 'emergencyContact'])
+                         )
+                       );
+
+      // Deletions are strictly restricted to administrators
+      allow delete: if isValidId(registrationId) && isAdmin();
+    }
+
+    // Collection: Admins
+    match /admins/{adminId} {
+      allow read: if isValidId(adminId) && isAdmin();
+      allow write: if isValidId(adminId) && isAdmin();
+    }
+  }
+}

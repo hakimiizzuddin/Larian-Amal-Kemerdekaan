@@ -1,0 +1,100 @@
+{
+  "entities": {
+    "Registration": {
+      "title": "Registration",
+      "description": "Participant registration document for Larian Amal Merdeka charity run.",
+      "type": "object",
+      "properties": {
+        "fullName": {
+          "type": "string",
+          "description": "Full legal name of the registered runner.",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "description": "Runner contact electronic mail address.",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "description": "Selected competition distance tier.",
+          "enum": ["10km_veteran", "10km_open", "5km_fun"]
+        },
+        "tshirtSize": {
+          "type": "string",
+          "description": "Selected official commemorative apparel sizing.",
+          "enum": ["XS", "S", "M", "L", "XL", "2XL"]
+        },
+        "bibNumber": {
+          "type": "string",
+          "description": "Unique assigned runner identifier bib sequence.",
+          "pattern": "^LAM-[0-9]{3,6}$"
+        },
+        "feePaid": {
+          "type": "number",
+          "description": "Fixed contribution amount in Malaysian Ringgit (MYR)."
+        },
+        "emergencyContact": {
+          "type": "string",
+          "description": "Emergency beacon contact handle and telecom digits.",
+          "maxLength": 60
+        },
+        "status": {
+          "type": "string",
+          "description": "Operational confirmation state.",
+          "enum": ["confirmed", "cancelled"]
+        },
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase user ID or guest identifier.",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of ledger record insertion."
+        }
+      },
+      "required": ["fullName", "email", "category", "feePaid", "bibNumber", "status", "createdAt"]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "System operational administrators with elevated clearance.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "Administrator verified email.",
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "description": "Security clearance level.",
+          "enum": ["sysop", "superadmin"]
+        },
+        "grantedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Ledger authorization timestamp."
+        }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/registrations/{registrationId}": {
+      "schema": {
+        "$ref": "#/entities/Registration"
+      },
+      "description": "Collection storing all participant registrations for the charity run."
+    },
+    "/admins/{adminId}": {
+      "schema": {
+        "$ref": "#/entities/AdminUser"
+      },
+      "description": "Authorized administrator profiles with management privileges."
+    }
+  }
+}

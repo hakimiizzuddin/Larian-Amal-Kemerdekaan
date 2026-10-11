@@ -1,0 +1,6 @@
+{
+  "name": "Larian Amal Merdeka",
+  "description": "Glitch Art themed registration for Merdeka Charity Run.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
